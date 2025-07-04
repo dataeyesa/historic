@@ -50,11 +50,11 @@ def ventas_detalle():
             fecha_corta = row['fecha'].split(" ")[0]
 
             agrupado[etiqueta].append(OrderedDict([
-                ("producto": row['producto']),
-                ("price_unit": row['price_unit']),
-                ("cantidad": row['cantidad']),
-                ("fecha": fecha_corta),
-                ("factura": row['factura'])
+                ("producto", row['producto']),
+                ("price_unit", row['price_unit']),
+                ("cantidad", row['cantidad']),
+                ("fecha", fecha_corta),
+                ("factura", row['factura'])
             ]))
 
         return jsonify(agrupado)
