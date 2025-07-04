@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 import sqlite3
 import os
+import OrderedDict
 
 app = Flask(__name__)
 
@@ -46,13 +47,15 @@ def ventas_detalle():
             if etiqueta not in agrupado:
                 agrupado[etiqueta] = []
 
-            agrupado[etiqueta].append({
-                "producto": row['producto'],
-                "price_unit": row['price_unit'],
-                "cantidad": row['cantidad'],
-                "fecha": row['fecha'],
-                "factura": row['factura']
-            })
+            fecha_corta = row['fecha'].split(" ")[0]
+
+            agrupado[etiqueta].append(OrderedDict([
+                ("producto": row['producto']),
+                ("price_unit": row['price_unit']),
+                ("cantidad": row['cantidad']),
+                ("fecha": fecha_corta),
+                ("factura": row['factura'])
+            ]))
 
         return jsonify(agrupado)
 
