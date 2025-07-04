@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 import sqlite3
 import os
-import OrderedDict
+from collections import OrderedDict
 
 app = Flask(__name__)
 
