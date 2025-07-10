@@ -54,7 +54,8 @@ def ventas_detalle():
                 ("cantidad", row['cantidad']),
                 ("producto", row['producto']),
                 ("fecha", fecha_corta),
-                ("factura", row['factura'])
+                ("factura", row['factura']),
+                ("total_venta", round(row['price_unit'] * row['cantidad'], 2))
             ]))
 
         return jsonify(agrupado)
