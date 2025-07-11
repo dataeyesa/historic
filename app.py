@@ -12,8 +12,8 @@ def ping():
 @app.route('/ventas_detalle', methods=['GET'])
 def ventas_detalle():
     nit = request.args.get("nit")
-    cliente = request.args.get("cliente")  # nombre parcial del cliente
-    busqueda_ref = request.args.get("busqueda_ref")  # texto parcial como 'fs 30015'
+    cliente = request.args.get("cliente")
+    busqueda_ref = request.args.get("busqueda_ref")
 
     if not (nit or cliente) or not busqueda_ref:
         return jsonify({"error": "Debe enviar 'nit' o 'cliente', y 'busqueda_ref' para la referencia o nombre del producto"}), 400
@@ -22,6 +22,8 @@ def ventas_detalle():
         conn = sqlite3.connect('historico.db')
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+
+        busqueda_ref_lower = f"%{busqueda_ref.lower()}%"
 
         query = """
             SELECT 
@@ -33,7 +35,7 @@ def ventas_detalle():
                 factura,
                 display_name
             FROM ventas
-            WHERE ({cond_cliente}) AND (referencia LIKE ? OR descripcion LIKE ?)
+            WHERE ({cond_cliente}) AND (LOWER(referencia) LIKE ? OR LOWER(descripcion) LIKE ?)
             ORDER BY fecha DESC
         """
 
@@ -45,7 +47,7 @@ def ventas_detalle():
             cond_cliente = "LOWER(display_name) LIKE ?"
             params.append(f"%{cliente.lower()}%")
 
-        params.extend([f"%{busqueda_ref}%", f"%{busqueda_ref}%"])
+        params.extend([busqueda_ref_lower, busqueda_ref_lower])
         cursor.execute(query.format(cond_cliente=cond_cliente), params)
 
         rows = cursor.fetchall()
@@ -66,7 +68,12 @@ def ventas_detalle():
                 ("total_venta", round(float(row['price_unit']) * float(row['cantidad']), 2))
             ]))
 
-        return jsonify(agrupado)
+        resultado_final = {
+            "total_sucursales": len(agrupado),
+            "resultados": agrupado
+        }
+
+        return jsonify(resultado_final)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
