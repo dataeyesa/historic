@@ -12,18 +12,15 @@ def ping():
 @app.route('/ventas_detalle', methods=['GET'])
 def ventas_detalle():
     nit = request.args.get("nit")
-    cliente = request.args.get("cliente")
-    busqueda_ref = request.args.get("busqueda_ref")
+    referencia = request.args.get("referencia")
 
-    if not (nit or cliente) or not busqueda_ref:
-        return jsonify({"error": "Debe enviar 'nit' o 'cliente', y 'busqueda_ref' para la referencia o nombre del producto"}), 400
+    if not nit or not referencia:
+        return jsonify({"error": "Parámetros 'nit' y 'referencia' son obligatorios"}), 400
 
     try:
         conn = sqlite3.connect('historico.db')
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-
-        busqueda_ref_lower = f"%{busqueda_ref.lower()}%"
 
         query = """
             SELECT 
@@ -35,25 +32,18 @@ def ventas_detalle():
                 factura,
                 display_name
             FROM ventas
-            WHERE ({cond_cliente}) AND (LOWER(referencia) LIKE ? OR LOWER(descripcion) LIKE ?)
+            WHERE nit = ? AND referencia = ?
             ORDER BY fecha DESC
         """
-
-        params = []
-        if nit:
-            cond_cliente = "nit = ?"
-            params.append(nit)
-        else:
-            cond_cliente = "LOWER(display_name) LIKE ?"
-            params.append(f"%{cliente.lower()}%")
-
-        params.extend([busqueda_ref_lower, busqueda_ref_lower])
-        cursor.execute(query.format(cond_cliente=cond_cliente), params)
-
+        cursor.execute(query, (nit, referencia))
         rows = cursor.fetchall()
+
+        # Agrupar por sucursal
         agrupado = {}
         for row in rows:
-            etiqueta = f"{row['display_name']} / {row['sucursal']}"
+            sucursal = row['sucursal']
+            etiqueta = f"{row['display_name']} / {sucursal}"
+
             if etiqueta not in agrupado:
                 agrupado[etiqueta] = []
 
@@ -68,12 +58,7 @@ def ventas_detalle():
                 ("total_venta", round(float(row['price_unit']) * float(row['cantidad']), 2))
             ]))
 
-        resultado_final = {
-            "total_sucursales": len(agrupado),
-            "resultados": agrupado
-        }
-
-        return jsonify(resultado_final)
+        return jsonify(agrupado)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
