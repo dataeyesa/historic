@@ -12,10 +12,11 @@ def ping():
 @app.route('/ventas_detalle', methods=['GET'])
 def ventas_detalle():
     nit = request.args.get("nit")
-    referencia = request.args.get("referencia")
+    cliente = request.args.get("cliente")  # nombre parcial del cliente
+    busqueda_ref = request.args.get("busqueda_ref")  # texto parcial como 'fs 30015'
 
-    if not nit or not referencia:
-        return jsonify({"error": "Parámetros 'nit' y 'referencia' son obligatorios"}), 400
+    if not (nit or cliente) or not busqueda_ref:
+        return jsonify({"error": "Debe enviar 'nit' o 'cliente', y 'busqueda_ref' para la referencia o nombre del producto"}), 400
 
     try:
         conn = sqlite3.connect('historico.db')
@@ -32,18 +33,25 @@ def ventas_detalle():
                 factura,
                 display_name
             FROM ventas
-            WHERE nit = ? AND referencia = ?
+            WHERE ({cond_cliente}) AND (referencia LIKE ? OR descripcion LIKE ?)
             ORDER BY fecha DESC
         """
-        cursor.execute(query, (nit, referencia))
-        rows = cursor.fetchall()
 
-        # Agrupar por sucursal
+        params = []
+        if nit:
+            cond_cliente = "nit = ?"
+            params.append(nit)
+        else:
+            cond_cliente = "LOWER(display_name) LIKE ?"
+            params.append(f"%{cliente.lower()}%")
+
+        params.extend([f"%{busqueda_ref}%", f"%{busqueda_ref}%"])
+        cursor.execute(query.format(cond_cliente=cond_cliente), params)
+
+        rows = cursor.fetchall()
         agrupado = {}
         for row in rows:
-            sucursal = row['sucursal']
-            etiqueta = f"{row['display_name']} / {sucursal}"
-
+            etiqueta = f"{row['display_name']} / {row['sucursal']}"
             if etiqueta not in agrupado:
                 agrupado[etiqueta] = []
 
